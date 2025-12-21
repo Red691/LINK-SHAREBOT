@@ -6,11 +6,11 @@ from logging.handlers import RotatingFileHandler
 
 TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
 BOT_USERNAME = 'REx'
-APP_ID = int(os.environ.get("APP_ID", ""))
-API_HASH = os.environ.get("API_HASH", "")
-OWNER_ID = int(os.environ.get("OWNER_ID", ""))
+APP_ID = int(os.environ.get("APP_ID", "20594537"))
+API_HASH = os.environ.get("API_HASH", "c505a4e5bb7d482197875888af544f17'")
+OWNER_ID = int(os.environ.get("OWNER_ID", "5770911041"))
 PORT = os.environ.get("PORT", "8080")
-DB_URL = os.environ.get("DB_URI", "")
+DB_URL = os.environ.get("DB_URI", "mongodb+srv://kumarnikhil05848:Kumarnikhil1513832380@cluster0.1nr8lgj.mongodb.net/?appName=Cluster0")
 DB_NAME = os.environ.get("DB_NAME", "RexBots")
 TG_BOT_WORKERS = int(os.environ.get("TG_BOT_WORKERS", "40"))
 COMMAND_PHOTO = os.environ.get("COMMAND_PHOTO", "https://ibb.co/DHqBS4V7")  # Replace with your photo URL
@@ -21,7 +21,7 @@ HELP_TXT =  os.environ.get("HELP_MESSAGE", "⁉️ Hᴇʟʟᴏ {mention} ~\n\n <
 FSUB_PIC = os.environ.get("FSUB_PIC", "https://ibb.co/DHqBS4V7")
 FSUB_LINK_EXPIRY = 300
 LOG_FILE_NAME = "Rexbots.txt"
-DATABASE_CHANNEL = int(os.environ.get("DATABASE_CHANNEL", ""))
+DATABASE_CHANNEL = int(os.environ.get("DATABASE_CHANNEL", "1003648977887"))
 
 logging.basicConfig(
     level=logging.INFO,
