@@ -10,10 +10,10 @@ APP_ID = int(os.environ.get("APP_ID", "20594537"))
 API_HASH = os.environ.get("API_HASH", "c505a4e5bb7d482197875888af544f17")
 OWNER_ID = int(os.environ.get("OWNER_ID", "5770911041"))
 PORT = os.environ.get("PORT", "8080")
-DB_URL = os.environ.get("DB_URI", "mongodb+srv://kumarnikhil05848:Kumarnikhil1513832380@cluster0.1nr8lgj.mongodb.net/?appName=Cluster0")
-DB_NAME = os.environ.get("DB_NAME", "RexBots")
+DB_URL = os.environ.get("DB_URI", "mongodb+srv://reelcraft99:reelcraft999@cluster0.f0sv73o.mongodb.net/?appName=Cluster0")
+DB_NAME = os.environ.get("DB_NAME", "Sensei_links")
 TG_BOT_WORKERS = int(os.environ.get("TG_BOT_WORKERS", "40"))
-COMMAND_PHOTO = os.environ.get("COMMAND_PHOTO", "https://files.catbox.moe/hsnex5.jpg")  # Replace with your photo URL
+COMMAND_PHOTO = os.environ.get("COMMAND_PHOTO", "http://ibb.co/TDy4j0Zm")  # Replace with your photo URL
 START_PIC = os.environ.get("START_PIC", "")
 START_MSG = os.environ.get("START_MESSAGE", "Hᴇʟʟᴏ {mention} ~\n\n <i><b><blockquote>Iᴀᴍ ᴀ ᴀᴅᴠᴀɴᴄᴇ ʟɪɴᴋ sʜᴀʀᴇ ʙᴏᴛ ᴛʜʀᴏᴜɢʜ ᴡʜɪᴄʜ ʏᴏᴜ ᴄᴀɴ ɢᴇᴛ ᴛʜᴇ ʟɪɴᴋs ᴏғ sᴘᴇᴄɪғɪᴄ ᴄʜᴀɴɴᴇʟs ᴡʜɪᴄʜ sᴀᴠᴇ ʏᴏᴜʀ ᴄʜᴀɴɴᴇʟs ғʀᴏᴍ ᴄᴏᴘʏʀɪɡʜᴛ.</blockquote></b></i>")
 ABOUT_TXT = os.environ.get("HELP_MESSAGE", "<i><b><blockquote>◈ ᴄʀᴇᴀᴛᴏʀ: <a href=https://t.me/Noting_else_bro>Nᴏᴛʜɪɴɢ 😑</a>\n◈ ꜰᴏᴜɴᴅᴇʀ ᴏꜰ : <a href=https://t.me/RexBots_Official>Nᴏᴛʜɪɴɢ 😑</a>\n◈ Cʜᴀɴɴᴇʟ: <a href='https://t.me/Anime_sensei_official'>Aɴɪᴍᴇ ᴄʜᴀɴɴᴇʟ</a>\n◈ ᴅᴀᴛᴀʙᴀsᴇ: <a href='https://www.mongodb.com/docs/'>ᴍᴏɴɢᴏ ᴅʙ</a>\n» Rᴇᴘᴏ ʟɪɴᴋ: <a href='https://t.me/Promotion_wala'>Click Here</a></blockquote></b></i>")
