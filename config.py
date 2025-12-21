@@ -7,7 +7,7 @@ from logging.handlers import RotatingFileHandler
 TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "8049296281:AAHjRx2o-xE0aGAZnqlPCo6tM749YvjY7lU")
 BOT_USERNAME = 'REx'
 APP_ID = int(os.environ.get("APP_ID", "20594537"))
-API_HASH = os.environ.get("API_HASH", "c505a4e5bb7d482197875888af544f17'")
+API_HASH = os.environ.get("API_HASH", "c505a4e5bb7d482197875888af544f17")
 OWNER_ID = int(os.environ.get("OWNER_ID", "5770911041"))
 PORT = os.environ.get("PORT", "8080")
 DB_URL = os.environ.get("DB_URI", "mongodb+srv://kumarnikhil05848:Kumarnikhil1513832380@cluster0.1nr8lgj.mongodb.net/?appName=Cluster0")
