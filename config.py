@@ -1,4 +1,3 @@
-from ast import pattern
 import os
 from os import environ
 import logging
