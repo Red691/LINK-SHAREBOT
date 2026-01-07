@@ -54,7 +54,7 @@ async def settings_command(client: Client, message: Message):
             [InlineKeyboardButton("• Cʟᴏsᴇ •", callback_data="close")]
         ])
         await message.reply_photo(
-            photo="https://files.catbox.moe/c5dtav.jpg",
+            photo="https://ibb.co/mVkSySr7",
             caption="<b>Hᴇʏ ᴅᴜᴅᴇ...!!</b>\n <blockquote><b><i>Iᴛ's ᴀ ᴘᴏᴡᴇʀғᴜʟ sᴇᴛᴛɪɴɢs ᴍᴇɴᴜ ᴏғ ʟɪɴᴋ sʜᴀʀᴇ ʙᴏᴛ Iɴ ᴛʜɪs ʏᴏᴜ ᴄᴀɴ ᴄʜᴀɴɢᴇ ʏᴏᴜʀ sᴇᴛᴛɪɴɢs ᴇᴀsɪʟʏ ᴡɪᴛʜᴏᴜᴛ ᴀɴʏ ᴍɪsᴛᴀᴋᴇ.</i></b></blockquote>",
             reply_markup=keyboard
         )
@@ -82,7 +82,7 @@ async def settings_callback(client: Bot, callback_query):
             ])
             await callback_query.edit_message_media(
                 InputMediaPhoto(
-                    "https://files.catbox.moe/c5dtav.jpg",
+                    "https://ibb.co/CsPWqnR4",
                     "<b>Hᴇʏ ᴅᴜᴅᴇ...!!</b>\n <blockquote><b><i>Iᴛ's ᴀ ᴘᴏᴡᴇʀғᴜʟ sᴇᴛᴛɪɴɢs ᴍᴇɴᴜ ᴏғ ʟɪɴᴋ sʜᴀʀᴇ ʙᴏᴛ Iɴ ᴛʜɪs ʏᴏᴜ ᴄᴀɴ ᴄʜᴀɴɢᴇ ʏᴏᴜʀ sᴇᴛᴛɪɴɢs ᴇᴀsɪʟʏ ᴡɪᴛʜᴏᴜᴛ ᴀɴʏ ᴍɪsᴛᴀᴋᴇ.</i></b></blockquote>"),
                 reply_markup=keyboard)
 
@@ -114,7 +114,7 @@ async def settings_callback(client: Bot, callback_query):
             user = await client.get_users(OWNER_ID)
             await callback_query.edit_message_media(
                 InputMediaPhoto(
-                    "https://files.catbox.moe/c5dtav.jpg",
+                    "https://ibb.co/DHqBS4V7",
                     ABOUT_TXT
                 ),
                 reply_markup=InlineKeyboardMarkup([
@@ -126,7 +126,7 @@ async def settings_callback(client: Bot, callback_query):
         elif cb_data == "help":
             await callback_query.edit_message_media(
                 InputMediaPhoto(
-                    "https://files.catbox.moe/c5dtav.jpg",
+                    "https://ibb.co/CsPWqnR4",
                     HELP_TXT.format(
                         first=callback_query.from_user.first_name,
                         last=callback_query.from_user.last_name or "",
