@@ -2,7 +2,7 @@ import motor.motor_asyncio
 import base64
 import logging
 from datetime import datetime, date
-from typing import List, Optional
+from typing import List, Optional, Dict
 from config import * 
 
 logging.basicConfig(level=logging.INFO)
@@ -13,13 +13,13 @@ class Master:
         self.dbclient = motor.motor_asyncio.AsyncIOMotorClient(DB_URL)
         self.database = self.dbclient[DB_NAME]
 
-        # Initialize all collections
+        # Initialize all collections - COMPLETELY SEPARATE
         self.user_data = self.database['users']
-        self.channel_data = self.database['channels']
+        self.channel_data = self.database['channels']  # For link generation ONLY
         self.admins_data = self.database['admins']
         self.del_timer_data = self.database['del_timer']
         self.ban_data = self.database['ban_data']
-        self.fsub_data = self.database['fsub']
+        self.fsub_data = self.database['fsub']  # For force subscription ONLY
         self.rqst_fsub_data = self.database['request_forcesub']
         self.rqst_fsub_Channel_data = self.database['request_forcesub_channel']
 
@@ -46,8 +46,6 @@ class Master:
             try:
                 await self.user_data.insert_one(user)
                 logging.info(f"New user added: {u.id}")
-                # Uncomment if send_log function exists
-                # await send_log(b, u)
             except Exception as e:
                 logging.error(f"Error adding user {u.id}: {e}")
         else:
@@ -132,55 +130,34 @@ class Master:
             logging.error(f"Error listing admins: {e}")
             return []
             
-    async def get_encoded_link(self, channel_id: int) -> Optional[str]:
-        """Get the encoded link for a channel."""
-        if not isinstance(channel_id, int):
-            logging.error(f"Invalid channel_id: {channel_id}")
-            return None
-
-        try:
-            channel = await self.channel_data.find_one({"channel_id": channel_id, "status": "active"})
-            if channel and "encoded_link" in channel:
-                logging.info(f"Retrieved encoded_link for channel {channel_id}: {channel['encoded_link']}")
-                return channel["encoded_link"]
-            else:
-                logging.warning(f"No encoded_link found for channel {channel_id}")
-                return None
-        except Exception as e:
-            logging.error(f"Error getting encoded link for channel {channel_id}: {e}")
-            return None
-
-    async def get_encoded_link2(self, channel_id: int) -> Optional[str]:
-        """Get the secondary encoded link for a channel."""
-        if not isinstance(channel_id, int):
-            logging.error(f"Invalid channel_id: {channel_id}")
-            return None
-
-        try:
-            channel = await self.channel_data.find_one({"channel_id": channel_id, "status": "active"})
-            if channel and "req_encoded_link" in channel:
-                logging.info(f"Retrieved req_encoded_link for channel {channel_id}: {channel['req_encoded_link']}")
-                return channel["req_encoded_link"]
-            else:
-                logging.warning(f"No req_encoded_link found for channel {channel_id}")
-                return None
-        except Exception as e:
-            logging.error(f"Error getting secondary encoded link for channel {channel_id}: {e}")
-            return None
-
+    # ==================== CHANNEL DATA METHODS (Link Generation Only) ====================
+    # These methods ONLY work with 'channels' collection for link generation
+    # They DO NOT touch 'fsub' collection
+    
     async def save_channel(self, channel_id: int) -> bool:
-        """Save a channel to the database with invite link expiration."""
+        """
+        Save channel to 'channels' collection for link generation ONLY.
+        ⚠️ This does NOT add channel to FSub list.
+        ⚠️ Use add_fsub_channel() separately if FSub is needed.
+        
+        Args:
+            channel_id: The channel ID to save
+            
+        Returns:
+            bool: True if saved successfully, False otherwise
+        """
         if not isinstance(channel_id, int):
-            logging.error(f"Invalid channel_id: {channel_id}")
+            logging.error(f"[SAVE_CHANNEL] Invalid channel_id: {channel_id}")
             return False
 
         try:
-            # Generate encoded links using standard base64 encoding
+            # Generate encoded links
             string_bytes = str(channel_id).encode("ascii")
             base64_bytes = base64.urlsafe_b64encode(string_bytes)
             encoded_link = (base64_bytes.decode("ascii")).strip("=")
-            req_encoded_link = encoded_link  # Same encoding for both
+            req_encoded_link = encoded_link
             
+            # Save to 'channels' collection ONLY
             await self.channel_data.update_one(
                 {"channel_id": channel_id},
                 {
@@ -195,45 +172,94 @@ class Master:
                 },
                 upsert=True
             )
-            logging.info(f"Saved channel {channel_id} with encoded_link: {encoded_link}")
+            logging.info(f"✅ [SAVE_CHANNEL] Channel {channel_id} saved to 'channels' collection (link generation)")
+            logging.info(f"ℹ️  [SAVE_CHANNEL] Channel {channel_id} is NOT in FSub list (use add_fsub_channel to add)")
             return True
         except Exception as e:
-            logging.error(f"Error saving channel {channel_id}: {e}")
+            logging.error(f"❌ [SAVE_CHANNEL] Error saving channel {channel_id}: {e}")
+            return False
+
+    async def delete_channel(self, channel_id: int) -> bool:
+        """
+        Delete channel from 'channels' collection (link generation).
+        ⚠️ This does NOT remove channel from FSub list.
+        ⚠️ Use remove_fsub_channel() separately to remove from FSub.
+        
+        Args:
+            channel_id: The channel ID to delete
+            
+        Returns:
+            bool: True if deleted, False otherwise
+        """
+        try:
+            result = await self.channel_data.delete_one({"channel_id": channel_id})
+            if result.deleted_count > 0:
+                logging.info(f"✅ [DELETE_CHANNEL] Channel {channel_id} deleted from 'channels' collection")
+                logging.info(f"ℹ️  [DELETE_CHANNEL] Channel {channel_id} may still be in FSub list")
+                return True
+            else:
+                logging.warning(f"⚠️  [DELETE_CHANNEL] Channel {channel_id} not found in 'channels' collection")
+                return False
+        except Exception as e:
+            logging.error(f"❌ [DELETE_CHANNEL] Error deleting channel {channel_id}: {e}")
             return False
 
     async def get_channels(self) -> List[int]:
-        """Get all active channel IDs from the database."""
+        """Get all channel IDs from 'channels' collection (for link generation)."""
         try:
             channels = await self.channel_data.find({"status": "active"}).to_list(None)
             valid_channels = [ch["channel_id"] for ch in channels if "channel_id" in ch]
-            if not valid_channels:
-                logging.info(f"No valid channels found in database. Total documents checked: {len(channels)}")
+            logging.info(f"[GET_CHANNELS] Found {len(valid_channels)} channels in 'channels' collection")
             return valid_channels
         except Exception as e:
             logging.error(f"Error fetching channels: {e}")
             return []
 
     async def show_channels(self) -> List[int]:
-        """Alias for get_channels - used by reqChannel_exist."""
+        """Alias for get_channels."""
         return await self.get_channels()
 
-    async def delete_channel(self, channel_id: int) -> bool:
-        """Delete a channel from the database."""
-        try:
-            result = await self.channel_data.delete_one({"channel_id": channel_id})
-            return result.deleted_count > 0
-        except Exception as e:
-            logging.error(f"Error deleting channel {channel_id}: {e}")
-            return False
-
-    async def save_encoded_link(self, channel_id: int) -> Optional[str]:
-        """Save an encoded link for a channel and return it."""
+    async def get_encoded_link(self, channel_id: int) -> Optional[str]:
+        """Get encoded link from 'channels' collection."""
         if not isinstance(channel_id, int):
             logging.error(f"Invalid channel_id: {channel_id}")
             return None
 
         try:
-            # Use the same encoding method as helper_func.py
+            channel = await self.channel_data.find_one({"channel_id": channel_id, "status": "active"})
+            if channel and "encoded_link" in channel:
+                return channel["encoded_link"]
+            else:
+                logging.warning(f"No encoded_link found for channel {channel_id}")
+                return None
+        except Exception as e:
+            logging.error(f"Error getting encoded link for channel {channel_id}: {e}")
+            return None
+
+    async def get_encoded_link2(self, channel_id: int) -> Optional[str]:
+        """Get secondary encoded link from 'channels' collection."""
+        if not isinstance(channel_id, int):
+            logging.error(f"Invalid channel_id: {channel_id}")
+            return None
+
+        try:
+            channel = await self.channel_data.find_one({"channel_id": channel_id, "status": "active"})
+            if channel and "req_encoded_link" in channel:
+                return channel["req_encoded_link"]
+            else:
+                logging.warning(f"No req_encoded_link found for channel {channel_id}")
+                return None
+        except Exception as e:
+            logging.error(f"Error getting secondary encoded link for channel {channel_id}: {e}")
+            return None
+
+    async def save_encoded_link(self, channel_id: int) -> Optional[str]:
+        """Save encoded link in 'channels' collection."""
+        if not isinstance(channel_id, int):
+            logging.error(f"Invalid channel_id: {channel_id}")
+            return None
+
+        try:
             string_bytes = str(channel_id).encode("ascii")
             base64_bytes = base64.urlsafe_b64encode(string_bytes)
             encoded_link = (base64_bytes.decode("ascii")).strip("=")
@@ -257,38 +283,31 @@ class Master:
             return None
 
     async def get_channel_by_encoded_link(self, encoded_link: str) -> Optional[int]:
-        """Get a channel ID by its encoded link - with fallback decoding."""
+        """Get channel ID by encoded link from 'channels' collection."""
         if not isinstance(encoded_link, str):
             logging.error("get_channel_by_encoded_link: encoded_link is not a string")
             return None
 
         try:
-            logging.info(f"[NORMAL LINK] Searching for channel with encoded_link: {encoded_link}")
-            
             # First try: Search by encoded_link field
             channel = await self.channel_data.find_one({"encoded_link": encoded_link, "status": "active"})
             
             if channel and "channel_id" in channel:
-                logging.info(f"[NORMAL LINK] Found channel by encoded_link: {channel['channel_id']}")
                 return channel["channel_id"]
             
-            # Second try: Decode the base64 string to get channel_id
-            logging.warning(f"[NORMAL LINK] Not found in DB, trying to decode: {encoded_link}")
+            # Second try: Decode the base64 string
             try:
-                # Use the same decoding method as helper_func.py
                 base64_string = encoded_link.strip("=")
                 base64_bytes = (base64_string + "=" * (-len(base64_string) % 4)).encode("ascii")
                 string_bytes = base64.urlsafe_b64decode(base64_bytes)
                 decoded_string = string_bytes.decode("ascii")
                 decoded_id = int(decoded_string)
-                logging.info(f"[NORMAL LINK] Successfully decoded channel_id: {decoded_id}")
                 
-                # Try to find channel by channel_id
+                # Check if channel exists
                 channel = await self.channel_data.find_one({"channel_id": decoded_id})
                 
                 if channel:
-                    logging.info(f"[NORMAL LINK] Channel {decoded_id} exists in DB, updating encoded_link")
-                    # Update the encoded_link field for this channel
+                    # Update the encoded_link field
                     await self.channel_data.update_one(
                         {"channel_id": decoded_id},
                         {
@@ -301,8 +320,7 @@ class Master:
                     )
                     return decoded_id
                 else:
-                    logging.warning(f"[NORMAL LINK] Channel {decoded_id} not found in DB, creating it")
-                    # Create the channel entry using the same encoding
+                    # Create the channel entry
                     string_bytes = str(decoded_id).encode("ascii")
                     base64_bytes = base64.urlsafe_b64encode(string_bytes)
                     new_encoded_link = (base64_bytes.decode("ascii")).strip("=")
@@ -323,16 +341,16 @@ class Master:
                     return decoded_id
                     
             except Exception as decode_error:
-                logging.error(f"[NORMAL LINK] Failed to decode base64 '{encoded_link}': {decode_error}")
+                logging.error(f"Failed to decode base64 '{encoded_link}': {decode_error}")
             
             return None
             
         except Exception as e:
-            logging.error(f"[NORMAL LINK] Error fetching channel by encoded link {encoded_link}: {e}")
+            logging.error(f"Error fetching channel by encoded link {encoded_link}: {e}")
             return None
 
     async def save_encoded_link2(self, channel_id: int, encoded_link: str) -> Optional[str]:
-        """Save a secondary encoded link for a channel."""
+        """Save secondary encoded link in 'channels' collection."""
         if not isinstance(channel_id, int) or not isinstance(encoded_link, str):
             logging.error(f"Invalid input: channel_id={channel_id}, encoded_link={encoded_link}")
             return None
@@ -357,38 +375,31 @@ class Master:
             return None
 
     async def get_channel_by_encoded_link2(self, encoded_link: str) -> Optional[int]:
-        """Get a channel ID by its secondary encoded link - with fallback decoding."""
+        """Get channel ID by secondary encoded link from 'channels' collection."""
         if not isinstance(encoded_link, str):
             logging.error("get_channel_by_encoded_link2: encoded_link is not a string")
             return None
 
         try:
-            logging.info(f"[REQUEST LINK] Searching for channel with req_encoded_link: {encoded_link}")
-            
             # First try: Search by req_encoded_link field
             channel = await self.channel_data.find_one({"req_encoded_link": encoded_link, "status": "active"})
             
             if channel and "channel_id" in channel:
-                logging.info(f"[REQUEST LINK] Found channel by req_encoded_link: {channel['channel_id']}")
                 return channel["channel_id"]
             
-            # Second try: Decode the base64 string to get channel_id
-            logging.warning(f"[REQUEST LINK] Not found in DB, trying to decode: {encoded_link}")
+            # Second try: Decode the base64 string
             try:
-                # Use the same decoding method as helper_func.py
                 base64_string = encoded_link.strip("=")
                 base64_bytes = (base64_string + "=" * (-len(base64_string) % 4)).encode("ascii")
                 string_bytes = base64.urlsafe_b64decode(base64_bytes)
                 decoded_string = string_bytes.decode("ascii")
                 decoded_id = int(decoded_string)
-                logging.info(f"[REQUEST LINK] Successfully decoded channel_id: {decoded_id}")
                 
-                # Try to find channel by channel_id
+                # Check if channel exists
                 channel = await self.channel_data.find_one({"channel_id": decoded_id})
                 
                 if channel:
-                    logging.info(f"[REQUEST LINK] Channel {decoded_id} exists in DB, updating req_encoded_link")
-                    # Update the req_encoded_link field for this channel
+                    # Update the req_encoded_link field
                     await self.channel_data.update_one(
                         {"channel_id": decoded_id},
                         {
@@ -401,8 +412,7 @@ class Master:
                     )
                     return decoded_id
                 else:
-                    logging.warning(f"[REQUEST LINK] Channel {decoded_id} not found in DB, creating it")
-                    # Create the channel entry using the same encoding
+                    # Create the channel entry
                     string_bytes = str(decoded_id).encode("ascii")
                     base64_bytes = base64.urlsafe_b64encode(string_bytes)
                     new_encoded_link = (base64_bytes.decode("ascii")).strip("=")
@@ -423,16 +433,16 @@ class Master:
                     return decoded_id
                     
             except Exception as decode_error:
-                logging.error(f"[REQUEST LINK] Failed to decode base64 '{encoded_link}': {decode_error}")
+                logging.error(f"Failed to decode base64 '{encoded_link}': {decode_error}")
             
             return None
             
         except Exception as e:
-            logging.error(f"[REQUEST LINK] Error fetching channel by secondary encoded link {encoded_link}: {e}")
+            logging.error(f"Error fetching channel by secondary encoded link {encoded_link}: {e}")
             return None
 
     async def save_invite_link(self, channel_id: int, invite_link: str, is_request: bool) -> bool:
-        """Save the current invite link for a channel and its type."""
+        """Save invite link in 'channels' collection."""
         if not isinstance(channel_id, int) or not isinstance(invite_link, str):
             logging.error(f"Invalid input: channel_id={channel_id}, invite_link={invite_link}")
             return False
@@ -456,7 +466,7 @@ class Master:
             return False
 
     async def get_current_invite_link(self, channel_id: int) -> Optional[dict]:
-        """Get the current invite link and its type for a channel."""
+        """Get current invite link from 'channels' collection."""
         if not isinstance(channel_id, int):
             return None
 
@@ -472,10 +482,35 @@ class Master:
             logging.error(f"Error fetching current invite link for channel {channel_id}: {e}")
             return None
 
-    async def add_fsub_channel(self, channel_id: int) -> bool:
-        """Add a channel to the FSub list."""
+    async def get_original_link(self, channel_id: int) -> Optional[str]:
+        """Get original link from 'channels' collection."""
         if not isinstance(channel_id, int):
-            logging.error(f"Invalid channel_id: {channel_id}")
+            return None
+        try:
+            channel = await self.channel_data.find_one({"channel_id": channel_id, "status": "active"})
+            return channel.get("original_link") if channel else None
+        except Exception as e:
+            logging.error(f"Error fetching original link for channel {channel_id}: {e}")
+            return None
+
+    # ==================== FSUB METHODS (Force Subscription Only) ====================
+    # These methods ONLY work with 'fsub' collection for force subscription
+    # They DO NOT touch 'channels' collection
+
+    async def add_fsub_channel(self, channel_id: int) -> bool:
+        """
+        Add channel to 'fsub' collection for force subscription ONLY.
+        ⚠️ This does NOT add channel to link generation.
+        ⚠️ Use save_channel() separately if link generation is needed.
+        
+        Args:
+            channel_id: The channel ID to add to FSub
+            
+        Returns:
+            bool: True if newly added, False if already exists
+        """
+        if not isinstance(channel_id, int):
+            logging.error(f"[ADD_FSUB] Invalid channel_id: {channel_id}")
             return False
 
         try:
@@ -491,36 +526,69 @@ class Master:
                 },
                 upsert=True
             )
-            return result.matched_count == 0
+            if result.matched_count == 0:
+                logging.info(f"✅ [ADD_FSUB] Channel {channel_id} added to 'fsub' collection (force subscription)")
+                logging.info(f"ℹ️  [ADD_FSUB] Channel {channel_id} is NOT in link generation (use save_channel to add)")
+                return True
+            else:
+                logging.info(f"ℹ️  [ADD_FSUB] Channel {channel_id} already exists in 'fsub' collection")
+                return False
         except Exception as e:
-            logging.error(f"Error adding FSub channel {channel_id}: {e}")
+            logging.error(f"❌ [ADD_FSUB] Error adding FSub channel {channel_id}: {e}")
             return False
 
     async def remove_fsub_channel(self, channel_id: int) -> bool:
-        """Remove a channel from the FSub list."""
+        """
+        Remove channel from 'fsub' collection (force subscription).
+        ⚠️ This does NOT remove channel from link generation.
+        ⚠️ Use delete_channel() separately to remove from link generation.
+        
+        Args:
+            channel_id: The channel ID to remove from FSub
+            
+        Returns:
+            bool: True if removed, False otherwise
+        """
         try:
             result = await self.fsub_data.delete_one({"channel_id": channel_id})
-            return result.deleted_count > 0
+            if result.deleted_count > 0:
+                logging.info(f"✅ [REMOVE_FSUB] Channel {channel_id} removed from 'fsub' collection")
+                logging.info(f"ℹ️  [REMOVE_FSUB] Channel {channel_id} may still be in link generation")
+                return True
+            else:
+                logging.warning(f"⚠️  [REMOVE_FSUB] Channel {channel_id} not found in 'fsub' collection")
+                return False
         except Exception as e:
-            logging.error(f"Error removing FSub channel {channel_id}: {e}")
+            logging.error(f"❌ [REMOVE_FSUB] Error removing FSub channel {channel_id}: {e}")
             return False
 
     async def get_fsub_channels(self) -> List[int]:
-        """Get all active FSub channel IDs."""
+        """Get all channel IDs from 'fsub' collection."""
         try:
             channels = await self.fsub_data.find({"status": "active"}).to_list(None)
-            return [channel["channel_id"] for channel in channels if "channel_id" in channel]
+            channel_ids = [channel["channel_id"] for channel in channels if "channel_id" in channel]
+            logging.info(f"[GET_FSUB] Found {len(channel_ids)} channels in 'fsub' collection")
+            return channel_ids
         except Exception as e:
             logging.error(f"Error fetching FSub channels: {e}")
             return []
 
+    async def is_fsub_channel(self, channel_id: int) -> bool:
+        """Check if channel exists in 'fsub' collection."""
+        try:
+            channel = await self.fsub_data.find_one({"channel_id": channel_id, "status": "active"})
+            return bool(channel)
+        except Exception as e:
+            logging.error(f"Error checking if channel {channel_id} is FSub: {e}")
+            return False
+
     async def get_channel_mode(self, channel_id: int):
-        """Get current mode of a channel."""
+        """Get mode from 'fsub' collection."""
         data = await self.fsub_data.find_one({'channel_id': channel_id})
         return data.get("mode", "off") if data else "off"
 
     async def set_channel_mode(self, channel_id: int, mode: str):
-        """Set mode of a channel."""
+        """Set mode in 'fsub' collection."""
         await self.fsub_data.update_one(
             {'channel_id': channel_id},
             {'$set': {'mode': mode}},
@@ -528,17 +596,8 @@ class Master:
         )
 
     async def set_channel_mode_all(self, mode: str) -> dict:
-        """
-        Set mode for all FSub channels at once.
-
-        Args:
-            mode: The mode to set ('on' or 'off')
-
-        Returns:
-            dict: Result with success status and count of updated channels
-        """
+        """Set mode for all channels in 'fsub' collection."""
         try:
-            # Validate mode
             if mode not in ['on', 'off']:
                 logging.error(f"Invalid mode: {mode}. Must be 'on' or 'off'")
                 return {
@@ -547,7 +606,6 @@ class Master:
                     "message": "Invalid mode. Must be 'on' or 'off'"
                 }
 
-            # Update all active FSub channels
             result = await self.fsub_data.update_many(
                 {"status": "active"},
                 {
@@ -576,12 +634,7 @@ class Master:
             }
 
     async def get_channel_mode_all(self) -> dict:
-        """
-        Get the mode status of all FSub channels.
-
-        Returns:
-            dict: Contains mode statistics and list of channels with their modes
-        """
+        """Get mode status of all channels in 'fsub' collection."""
         try:
             channels = await self.fsub_data.find({"status": "active"}).to_list(None)
 
@@ -633,8 +686,31 @@ class Master:
                 "message": f"Error: {str(e)}"
             }
 
+    # ==================== UTILITY METHODS ====================
+    
+    async def get_channel_status(self, channel_id: int) -> Dict:
+        """
+        Check where a channel exists (useful for debugging).
+        
+        Returns:
+            dict with keys: 
+            - in_channels: bool (exists in link generation)
+            - in_fsub: bool (exists in force subscription)
+        """
+        in_channels = bool(await self.channel_data.find_one({"channel_id": channel_id, "status": "active"}))
+        in_fsub = bool(await self.fsub_data.find_one({"channel_id": channel_id, "status": "active"}))
+        
+        return {
+            "channel_id": channel_id,
+            "in_channels": in_channels,
+            "in_fsub": in_fsub,
+            "message": f"Channel {channel_id}: Link Gen={'✅' if in_channels else '❌'}, FSub={'✅' if in_fsub else '❌'}"
+        }
+
+    # ==================== REQUEST FORCESUB METHODS ====================
+
     async def req_user(self, channel_id: int, user_id: int):
-        """Add the user to the set of users for a specific channel."""
+        """Add user to request list for a channel."""
         try:
             await self.rqst_fsub_Channel_data.update_one(
                 {'channel_id': int(channel_id)},
@@ -645,14 +721,14 @@ class Master:
             logging.error(f"[DB ERROR] Failed to add user to request list: {e}")
 
     async def del_req_user(self, channel_id: int, user_id: int):
-        """Remove a user from the channel set."""
+        """Remove user from request list."""
         await self.rqst_fsub_Channel_data.update_one(
             {'channel_id': channel_id},
             {'$pull': {'user_ids': user_id}}
         )
 
     async def req_user_exist(self, channel_id: int, user_id: int):
-        """Check if the user exists in the set of the channel's users."""
+        """Check if user exists in request list."""
         try:
             found = await self.rqst_fsub_Channel_data.find_one({
                 'channel_id': int(channel_id),
@@ -664,19 +740,8 @@ class Master:
             return False
 
     async def reqChannel_exist(self, channel_id: int):
-        """Check if a channel exists using show_channels."""
+        """Check if channel exists in 'channels' collection."""
         channel_ids = await self.show_channels()
         return channel_id in channel_ids
-
-    async def get_original_link(self, channel_id: int) -> Optional[str]:
-        """Get the original link stored for a channel (used by /genlink)."""
-        if not isinstance(channel_id, int):
-            return None
-        try:
-            channel = await self.channel_data.find_one({"channel_id": channel_id, "status": "active"})
-            return channel.get("original_link") if channel else None
-        except Exception as e:
-            logging.error(f"Error fetching original link for channel {channel_id}: {e}")
-            return None
 
 Seishiro = Master(DB_URL, DB_NAME)
