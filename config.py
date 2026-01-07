@@ -4,14 +4,14 @@ from os import environ
 import logging
 from logging.handlers import RotatingFileHandler
 
-TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
-BOT_USERNAME = 'REx'
-APP_ID = int(os.environ.get("APP_ID", ""))
-API_HASH = os.environ.get("API_HASH", "")
-OWNER_ID = int(os.environ.get("OWNER_ID", ""))
+TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "7280187591:AAE-Lh16r1noxlMGeRn0y7SYhj3XjkT6NOs")
+BOT_USERNAME = 'Anime_sensei_official_bot'
+APP_ID = int(os.environ.get("APP_ID", "20594537"))
+API_HASH = os.environ.get("API_HASH", "c505a4e5bb7d482197875888af544f17")
+OWNER_ID = int(os.environ.get("OWNER_ID", "5770911041"))
 PORT = os.environ.get("PORT", "8080")
-DB_URL = os.environ.get("DB_URI", "")
-DB_NAME = os.environ.get("DB_NAME", "RexBots")
+DB_URL = os.environ.get("DB_URI", "mongodb+srv://reelcraft99:reelcraft999@cluster0.f0sv73o.mongodb.net/?appName=Cluster0")
+DB_NAME = os.environ.get("DB_NAME", "Sensei_linkss")
 TG_BOT_WORKERS = int(os.environ.get("TG_BOT_WORKERS", "40"))
 COMMAND_PHOTO = os.environ.get("COMMAND_PHOTO", "https://ibb.co/DHqBS4V7")  # Replace with your photo URL
 START_PIC = os.environ.get("START_PIC", "https://ibb.co/CsPWqnR4")
